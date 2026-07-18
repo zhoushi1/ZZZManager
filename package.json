@@ -2,7 +2,7 @@
   "name": "zzz-balance-monitor",
   "productName": "ZZZManager",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Desktop balance monitor for AI gateway accounts, thresholds, and webhooks.",
   "author": "zhoushi1",
   "repository": {
