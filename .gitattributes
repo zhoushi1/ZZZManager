@@ -1,0 +1,4 @@
+# Force SQL migration files to LF on all platforms so their embedded
+# checksums stay stable across checkout/build (e.g. Windows CI runners).
+# Do not rewrite historical migrations after release; add new ones instead.
+src-tauri/migrations/*.sql text eol=lf

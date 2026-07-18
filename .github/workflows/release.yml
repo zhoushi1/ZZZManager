@@ -1,0 +1,281 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, for example v0.1.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-15
+            name: macOS (Apple Silicon)
+            targetName: aarch64-apple-darwin
+            args: "--target aarch64-apple-darwin"
+          - platform: macos-15-intel
+            name: macOS (Intel)
+            targetName: x86_64-apple-darwin
+            args: "--target x86_64-apple-darwin"
+          - platform: ubuntu-24.04
+            name: Linux
+            targetName: linux
+            args: ""
+          - platform: windows-latest
+            name: Windows
+            targetName: windows
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+      - name: Install Linux dependencies (Tauri v2)
+        if: matrix.platform == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            rpm
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Enable pnpm via Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Setup Rust (macOS targets)
+        if: startsWith(matrix.platform, 'macos')
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Setup Rust
+        if: ${{ !startsWith(matrix.platform, 'macos') }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve application metadata
+        run: node scripts/export-app-metadata.mjs
+
+      # Build-only: tauri-action creates/uploads a GitHub Release only when
+      # tagName is set. Omitting tagName/releaseName/releaseId keeps this job to
+      # building bundles; the dedicated `publish` job below cuts the release.
+      - name: Build Tauri bundles
+        uses: tauri-apps/tauri-action@v1
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+
+      # ---- Stage bundles into a flat `staging/` dir with clean, predictable
+      # names. Each platform globs its own bundle types so we never depend on
+      # the exact file names Tauri emits. Names follow the productName and
+      # version fields from package.json.
+
+      - name: Stage macOS bundles
+        if: startsWith(matrix.platform, 'macos')
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="src-tauri/target/${{ matrix.targetName }}/release/bundle"
+          case "${{ matrix.targetName }}" in
+            aarch64-apple-darwin) ARCH=aarch64 ;;
+            x86_64-apple-darwin)  ARCH=x64 ;;
+            *)                    ARCH=unknown ;;
+          esac
+          mkdir -p staging
+          shopt -s nullglob
+          for f in "$BUNDLE"/dmg/*.dmg; do
+            cp "$f" "staging/${APP_NAME}_${APP_VERSION}_${ARCH}.dmg"
+          done
+          # Also keep the .app.tar.gz updater bundle if produced.
+          for f in "$BUNDLE"/macos/*.app.tar.gz; do
+            cp "$f" "staging/${APP_NAME}_${APP_VERSION}_${ARCH}.app.tar.gz"
+          done
+          echo "Staged macOS assets:" && ls -la staging
+
+      - name: Stage Linux bundles
+        if: matrix.platform == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="src-tauri/target/release/bundle"
+          mkdir -p staging
+          shopt -s nullglob
+          for f in "$BUNDLE"/appimage/*.AppImage; do
+            cp "$f" "staging/${APP_NAME}_${APP_VERSION}_amd64.AppImage"
+          done
+          for f in "$BUNDLE"/deb/*.deb; do
+            cp "$f" "staging/${APP_NAME}_${APP_VERSION}_amd64.deb"
+          done
+          for f in "$BUNDLE"/rpm/*.rpm; do
+            cp "$f" "staging/${APP_NAME}_${APP_VERSION}_x86_64.rpm"
+          done
+          echo "Staged Linux assets:" && ls -la staging
+
+      - name: Stage Windows bundles (NSIS + MSI + Portable zip)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = $env:APP_VERSION
+
+          $bundle = "src-tauri/target/release/bundle"
+          New-Item -ItemType Directory -Force -Path staging | Out-Null
+
+          # NSIS installer (setup.exe)
+          $nsis = Get-ChildItem -Path "$bundle/nsis" -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($nsis) {
+            Copy-Item $nsis.FullName "staging/$($env:APP_NAME)_${version}_x64-setup.exe"
+          } else {
+            Write-Warning "No NSIS setup.exe found under $bundle/nsis"
+          }
+
+          # MSI installer
+          $msi = Get-ChildItem -Path "$bundle/msi" -Filter *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($msi) {
+            Copy-Item $msi.FullName "staging/$($env:APP_NAME)_${version}_x64.msi"
+          } else {
+            Write-Warning "No MSI found under $bundle/msi"
+          }
+
+          # Portable zip: locate the built exe robustly. Prefer the release exe
+          # next to the target dir; fall back to a recursive search excluding
+          # deps/build intermediates. The product name contains spaces, so we
+          # match by size/most-recent rather than a hardcoded file name.
+          $exe = $null
+          $direct = Get-ChildItem -Path "src-tauri/target/release" -Filter *.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch 'setup' } |
+            Sort-Object Length -Descending | Select-Object -First 1
+          if ($direct) {
+            $exe = $direct
+          } else {
+            $exe = Get-ChildItem -Path "src-tauri/target/release" -Filter *.exe -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch '\\(deps|build|incremental)\\' -and $_.Name -notmatch 'setup' } |
+              Sort-Object Length -Descending | Select-Object -First 1
+          }
+
+          if ($exe) {
+            $portableDir = "portable/$($env:APP_NAME)"
+            New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+            Copy-Item $exe.FullName (Join-Path $portableDir "$($env:APP_NAME).exe")
+            # Include the WebView2 loader if Tauri emitted one next to the exe.
+            $loader = Join-Path $exe.DirectoryName "WebView2Loader.dll"
+            if (Test-Path $loader) { Copy-Item $loader $portableDir }
+            $zip = "staging/$($env:APP_NAME)_${version}_x64-portable.zip"
+            Compress-Archive -Path "$portableDir/*" -DestinationPath $zip -Force
+          } else {
+            Write-Warning "Could not locate a portable exe under src-tauri/target/release"
+          }
+
+          Write-Host "Staged Windows assets:"
+          Get-ChildItem staging | Format-Table Name, Length
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles-${{ matrix.targetName }}
+          path: staging/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+      - name: Resolve application metadata
+        run: node scripts/export-app-metadata.mjs
+
+      - name: Resolve tag
+        id: meta
+        shell: bash
+        run: |
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          # Artifacts arrive under artifacts/<artifact-name>/<files>.
+          find artifacts -type f -exec cp -v {} release/ \;
+          echo "Collected release assets:"
+          ls -la release
+
+      - name: Generate checksums.txt
+        shell: bash
+        working-directory: release
+        run: |
+          set -euo pipefail
+          # One canonical checksum manifest for every asset (sorted, base names
+          # only so the file is portable). Users verify with:
+          #   sha256sum -c checksums.txt   (Linux)
+          #   shasum -a 256 -c checksums.txt   (macOS)
+          sha256sum $(ls -1 | sort) > checksums.txt
+          echo "checksums.txt:"
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "${{ env.APP_NAME }} ${{ steps.meta.outputs.tag }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release/*
+          body: |
+            作者 / Author: ${{ env.APP_AUTHOR }}
