@@ -6172,7 +6172,7 @@ dependencies = [
 
 [[package]]
 name = "zzz-balance-monitor"
-version = "0.4.2"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "reqwest 0.12.28",

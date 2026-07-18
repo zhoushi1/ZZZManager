@@ -1,6 +1,6 @@
 [package]
 name = "zzz-balance-monitor"
-version = "0.4.2"
+version = "1.0.0"
 description = "Desktop balance monitor for AI gateway accounts, thresholds, and webhooks."
 authors = ["zhoushi1"]
 edition = "2021"
