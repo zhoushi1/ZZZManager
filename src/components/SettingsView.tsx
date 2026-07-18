@@ -12,11 +12,23 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input, Label } from "./ui/input";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
+} from "./ui/field";
+import { Select } from "./ui/select";
+import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
+import { Switch } from "./ui/switch";
 import * as api from "../lib/api";
 import { APP_NAME, APP_PACKAGE_NAME, APP_VERSION } from "../lib/app-metadata";
 import type { AppInfo, ImportReport, ProxyMode, UpdateCheckResult } from "../types";
 import { useI18n, type Locale } from "../lib/i18n";
+import { useTheme, type ThemePreference } from "../lib/theme";
 import { cn } from "../lib/utils";
 import appLogo from "../../src-tauri/icons/128x128.png";
 
@@ -32,70 +44,29 @@ interface SettingsViewProps {
 
 export function SettingsView({ onImportComplete }: SettingsViewProps = {}) {
   return (
-    <div className="min-w-0 flex-1 overflow-auto p-7">
-      <div className="mx-auto grid w-full max-w-[1500px] grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-5">
-        <LanguageCard />
-        <AutostartCard />
-        <CheckDefaultsCard />
-        <ProxyCard />
-        <ImportExportCard onImportComplete={onImportComplete} />
+    <div className="min-w-0 flex-1 overflow-auto p-5 sm:p-7">
+      <div className="mx-auto grid w-full max-w-[1500px] grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-5">
+          <GeneralSettingsCard />
+          <ProxyCard />
+        </div>
+        <div className="flex min-w-0 flex-col gap-5">
+          <CheckDefaultsCard />
+          <ImportExportCard onImportComplete={onImportComplete} />
+        </div>
         <AboutCard />
       </div>
     </div>
   );
 }
 
-function LanguageCard() {
+function GeneralSettingsCard() {
   const { t, locale, setLocale } = useI18n();
-  const [saved, setSaved] = useState(false);
-
-  function choose(next: Locale) {
-    setLocale(next);
-    setSaved(true);
-  }
-
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <h2 className="text-sm font-semibold">{t("language.title")}</h2>
-        <p className="text-sm text-slate-500">{t("language.description")}</p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {(["zh-CN", "en-US"] as Locale[]).map((option) => (
-          <label
-            key={option}
-            className="flex cursor-pointer items-center gap-3 rounded-md border border-slate-200 px-3 py-2.5 text-sm hover:bg-slate-50"
-          >
-            <input
-              type="radio"
-              name="locale"
-              value={option}
-              checked={locale === option}
-              onChange={() => choose(option)}
-              className="h-4 w-4 border-slate-300"
-            />
-            <span className="font-medium text-slate-800">
-              {option === "zh-CN" ? t("language.zh") : t("language.en")}
-            </span>
-          </label>
-        ))}
-        {saved && (
-          <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            {t("language.saved")}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function AutostartCard() {
-  const { t } = useI18n();
+  const { theme, setTheme } = useTheme();
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -125,16 +96,10 @@ function AutostartCard() {
     // trusting the optimistic value.
     setSaving(true);
     setError(null);
-    setNotice(null);
     setEnabled(next);
     try {
       const actual = await api.setAutostartEnabled(next);
       setEnabled(actual);
-      setNotice(
-        actual
-          ? t("settings.autostart.enabled")
-          : t("settings.autostart.disabled"),
-      );
     } catch (err) {
       setError(t("settings.autostart.updateFailed", { error: String(err) }));
       // Re-query the real state so the switch matches reality after a failure.
@@ -151,42 +116,74 @@ function AutostartCard() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <h2 className="text-sm font-semibold">{t("settings.autostart.title")}</h2>
-        <p className="text-sm text-slate-500">
-          {t("settings.autostart.description")}
-        </p>
+        <CardTitle>{t("settings.general.title")}</CardTitle>
+        <CardDescription>{t("settings.general.description")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {loading ? (
-          <div className="py-8 text-center text-sm text-slate-500">
-            {t("settings.autostart.loading")}
-          </div>
-        ) : (
-          <>
-            <label
-              className={`flex items-start gap-3 rounded-md border border-slate-200 px-3 py-2.5 text-sm ${
-                saving ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-slate-50"
-              }`}
+      <CardContent className="p-0">
+        <FieldGroup className="gap-0">
+          <Field orientation="responsive" className="px-5 py-4">
+            <FieldContent>
+              <FieldTitle>{t("language.title")}</FieldTitle>
+              <FieldDescription>{t("language.description")}</FieldDescription>
+            </FieldContent>
+            <Select
+              value={locale}
+              onChange={(event) => setLocale(event.target.value as Locale)}
+              className="w-full @md/field-group:w-44"
+              aria-label={t("language.title")}
             >
-              <input
-                type="checkbox"
+              <option value="zh-CN">{t("language.zh")}</option>
+              <option value="en-US">{t("language.en")}</option>
+            </Select>
+          </Field>
+          <Separator />
+          <Field orientation="responsive" className="px-5 py-4">
+            <FieldContent>
+              <FieldTitle>{t("theme.title")}</FieldTitle>
+              <FieldDescription>{t("theme.description")}</FieldDescription>
+            </FieldContent>
+            <Select
+              value={theme}
+              onChange={(event) =>
+                setTheme(event.target.value as ThemePreference)
+              }
+              className="w-full @md/field-group:w-44"
+              aria-label={t("theme.title")}
+            >
+              <option value="system">{t("theme.system")}</option>
+              <option value="light">{t("theme.light")}</option>
+              <option value="dark">{t("theme.dark")}</option>
+            </Select>
+          </Field>
+          <Separator />
+          <Field
+            orientation="horizontal"
+            className="px-5 py-4"
+            data-disabled={loading || saving || undefined}
+          >
+            <FieldContent>
+              <FieldTitle>{t("settings.autostart.toggle")}</FieldTitle>
+              <FieldDescription>
+                {t("settings.autostart.toggleHint", { name: APP_NAME })}
+              </FieldDescription>
+            </FieldContent>
+            {loading ? (
+              <Skeleton className="h-[18px] w-8" />
+            ) : (
+              <Switch
+                id="autostart-enabled"
                 checked={enabled}
                 disabled={saving}
-                onChange={(e) => void handleToggle(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                onCheckedChange={(checked) => void handleToggle(checked)}
+                aria-label={t("settings.autostart.toggle")}
               />
-              <span>
-                <span className="font-medium text-slate-800">
-                  {t("settings.autostart.toggle")}
-                </span>
-                <span className="mt-0.5 block text-xs text-slate-500">
-                  {t("settings.autostart.toggleHint", { name: APP_NAME })}
-                </span>
-              </span>
-            </label>
-            {error && <ErrorMessage error={error} />}
-            {notice && !error && <SuccessMessage text={notice} />}
-          </>
+            )}
+          </Field>
+        </FieldGroup>
+        {error && (
+          <div className="px-5 pb-4">
+            <ErrorMessage error={error} />
+          </div>
         )}
       </CardContent>
     </Card>
@@ -257,63 +254,53 @@ function ProxyCard() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <h2 className="text-sm font-semibold">{t("settings.proxy")}</h2>
-        <p className="text-sm text-slate-500">{t("settings.proxyHint")}</p>
+        <CardTitle>{t("settings.proxy")}</CardTitle>
+        <CardDescription>{t("settings.proxyHint")}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="py-8 text-center text-sm text-slate-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             {t("loadingSettings")}
           </div>
         ) : (
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="space-y-2">
-              {PROXY_MODES.map((option) => (
-                <label
-                  key={option}
-                  className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 px-3 py-2.5 text-sm hover:bg-slate-50"
-                >
-                  <input
-                    type="radio"
-                    name="proxy-mode"
-                    value={option}
-                    checked={mode === option}
-                    onChange={() => {
-                      setMode(option);
-                      setSaved(false);
-                    }}
-                    className="mt-0.5 h-4 w-4 border-slate-300"
-                  />
-                  <span>
-                    <span className="font-medium text-slate-800">
-                      {proxyLabel(option)}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-slate-500">
-                      {hintFor(option)}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {mode === "custom" && (
-              <div>
-                <Label htmlFor="proxy-url">{t("settings.proxyUrl")}</Label>
-                <Input
-                  id="proxy-url"
-                  value={customUrl}
-                  onChange={(e) => {
-                    setCustomUrl(e.target.value);
+          <form onSubmit={handleSave} className="flex flex-col gap-4">
+            <FieldGroup>
+              <Field>
+                <Label htmlFor="proxy-mode">{t("settings.proxyMode")}</Label>
+                <Select
+                  id="proxy-mode"
+                  value={mode}
+                  onChange={(event) => {
+                    setMode(event.target.value as ProxyMode);
                     setSaved(false);
                   }}
-                  placeholder="http://proxy.example.com:8080"
-                  required
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  {t("settings.proxyUrlHint")}
-                </p>
-              </div>
-            )}
+                >
+                  {PROXY_MODES.map((option) => (
+                    <option key={option} value={option}>
+                      {proxyLabel(option)}
+                    </option>
+                  ))}
+                </Select>
+                <FieldDescription>{hintFor(mode)}</FieldDescription>
+              </Field>
+
+              {mode === "custom" && (
+                <Field>
+                  <Label htmlFor="proxy-url">{t("settings.proxyUrl")}</Label>
+                  <Input
+                    id="proxy-url"
+                    value={customUrl}
+                    onChange={(e) => {
+                      setCustomUrl(e.target.value);
+                      setSaved(false);
+                    }}
+                    placeholder="http://proxy.example.com:8080"
+                    required
+                  />
+                  <FieldDescription>{t("settings.proxyUrlHint")}</FieldDescription>
+                </Field>
+              )}
+            </FieldGroup>
 
             {error && <ErrorMessage error={error} />}
             {saved && !error && <SuccessMessage text={t("settings.proxySaved")} />}
@@ -397,23 +384,21 @@ function CheckDefaultsCard() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <h2 className="text-sm font-semibold">{t("settings.checkDefaults")}</h2>
-        <p className="text-sm text-slate-500">
-          {t("settings.checkDefaultsHint")}
-        </p>
+        <CardTitle>{t("settings.checkDefaults")}</CardTitle>
+        <CardDescription>{t("settings.checkDefaultsHint")}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="py-8 text-center text-sm text-slate-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             {t("loadingSettings")}
           </div>
         ) : (
-          <form onSubmit={handleSave} className="space-y-4">
+          <form onSubmit={handleSave} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="default-threshold">
+              <Field>
+                <FieldLabel htmlFor="default-threshold">
                   {t("settings.globalThreshold")}
-                </Label>
+                </FieldLabel>
                 <Input
                   id="default-threshold"
                   type="number"
@@ -426,11 +411,11 @@ function CheckDefaultsCard() {
                   }}
                   required
                 />
-              </div>
-              <div>
-                <Label htmlFor="default-interval">
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="default-interval">
                   {t("settings.defaultInterval")}
-                </Label>
+                </FieldLabel>
                 <Input
                   id="default-interval"
                   type="number"
@@ -442,9 +427,11 @@ function CheckDefaultsCard() {
                   }}
                   required
                 />
-              </div>
-              <div>
-                <Label htmlFor="retention-days">{t("settings.retention")}</Label>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="retention-days">
+                  {t("settings.retention")}
+                </FieldLabel>
                 <Input
                   id="retention-days"
                   type="number"
@@ -456,9 +443,9 @@ function CheckDefaultsCard() {
                   }}
                   required
                 />
-              </div>
-              <div>
-                <Label htmlFor="user-agent">User-Agent</Label>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="user-agent">User-Agent</FieldLabel>
                 <Input
                   id="user-agent"
                   value={userAgent}
@@ -469,11 +456,11 @@ function CheckDefaultsCard() {
                   placeholder={`${APP_PACKAGE_NAME}/${APP_VERSION}`}
                   required
                 />
-              </div>
-              <div>
-                <Label htmlFor="notification-cooldown">
+              </Field>
+              <Field className="sm:col-span-2">
+                <FieldLabel htmlFor="notification-cooldown">
                   {t("settings.notificationCooldown")}
-                </Label>
+                </FieldLabel>
                 <Input
                   id="notification-cooldown"
                   type="number"
@@ -485,10 +472,10 @@ function CheckDefaultsCard() {
                   }}
                   required
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <FieldDescription>
                   {t("settings.notificationCooldownHint")}
-                </p>
-              </div>
+                </FieldDescription>
+              </Field>
             </div>
 
             {error && <ErrorMessage error={error} />}
@@ -580,25 +567,24 @@ function ImportExportCard({
   return (
     <Card className="w-full">
       <CardHeader>
-        <h2 className="text-sm font-semibold">{t("settings.importExport")}</h2>
-        <p className="text-sm text-slate-500">
-          {t("settings.importExportHint")}
-        </p>
+        <CardTitle>{t("settings.importExport")}</CardTitle>
+        <CardDescription>{t("settings.importExportHint")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t("settings.export")}
             </h3>
-            <OptionBox
+            <SwitchSettingRow
+              id="include-export-credentials"
               checked={includeCredentials}
               onChange={setIncludeCredentials}
               title={t("settings.includeCredentials")}
               description={t("settings.includeCredentialsHint")}
             />
             {includeCredentials && (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <p className="rounded-md border border-warning/30 bg-warning-muted px-3 py-2 text-xs text-warning-foreground">
                 {t("settings.credentialsWarning")}
               </p>
             )}
@@ -618,19 +604,23 @@ function ImportExportCard({
             </div>
           </div>
 
-          <div className="space-y-3 border-t border-slate-100 pt-6 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <Separator />
+
+          <div className="flex flex-col gap-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t("settings.import")}
             </h3>
-            <p className="text-xs text-slate-500">{t("settings.importHint")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings.importHint")}</p>
 
-            <OptionBox
+            <SwitchSettingRow
+              id="import-credentials"
               checked={importCredentials}
               onChange={setImportCredentials}
               title={t("settings.importCredentials")}
               description={t("settings.importCredentialsHint")}
             />
-            <OptionBox
+            <SwitchSettingRow
+              id="overwrite-existing"
               checked={overwriteExisting}
               onChange={setOverwriteExisting}
               title={t("settings.overwriteExisting")}
@@ -648,7 +638,7 @@ function ImportExportCard({
             {importError && <ErrorMessage error={importError} />}
             {report && <ImportReportView report={report} />}
             {refreshError && (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <p className="rounded-md border border-warning/30 bg-warning-muted px-3 py-2 text-sm text-warning-foreground">
                 {refreshError}
               </p>
             )}
@@ -818,32 +808,32 @@ function AboutCard() {
   );
 }
 
-function OptionBox({
+function SwitchSettingRow({
+  id,
   checked,
   onChange,
   title,
   description,
 }: {
+  id: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   title: string;
   description: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 px-3 py-2.5 text-sm hover:bg-slate-50">
-      <input
-        type="checkbox"
+    <Field orientation="horizontal">
+      <FieldContent>
+        <FieldTitle>{title}</FieldTitle>
+        <FieldDescription>{description}</FieldDescription>
+      </FieldContent>
+      <Switch
+        id={id}
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-slate-300"
+        onCheckedChange={onChange}
+        aria-label={title}
       />
-      <span>
-        <span className="font-medium text-slate-800">{title}</span>
-        <span className="mt-0.5 block text-xs text-slate-500">
-          {description}
-        </span>
-      </span>
-    </label>
+    </Field>
   );
 }
 
@@ -858,22 +848,22 @@ function ImportReportView({ report }: { report: ImportReport }) {
     [t("settings.settingsUpdated"), report.settingsUpdated],
   ];
   return (
-    <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
+    <div className="rounded-md border border-success/30 bg-success-muted px-3 py-3 text-sm text-success">
       <div className="font-medium">{t("settings.importComplete")}</div>
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-2">
-            <dt className="text-emerald-800">{label}</dt>
+            <dt className="text-success">{label}</dt>
             <dd className="font-medium tabular-nums">{value}</dd>
           </div>
         ))}
       </dl>
       {report.warnings.length > 0 && (
         <div className="mt-3">
-          <div className="text-xs font-medium text-amber-800">
+          <div className="text-xs font-medium text-warning-foreground">
             {t("settings.warnings")}
           </div>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-amber-800">
+          <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-xs text-warning-foreground">
             {report.warnings.map((warning, i) => (
               <li key={i}>{warning}</li>
             ))}
@@ -886,7 +876,7 @@ function ImportReportView({ report }: { report: ImportReport }) {
 
 function ErrorMessage({ error }: { error: string }) {
   return (
-    <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+    <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
       {error}
     </p>
   );
@@ -894,7 +884,7 @@ function ErrorMessage({ error }: { error: string }) {
 
 function SuccessMessage({ text }: { text: string }) {
   return (
-    <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+    <p className="rounded-md border border-success/30 bg-success-muted px-3 py-2 text-sm text-success">
       {text}
     </p>
   );

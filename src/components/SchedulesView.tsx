@@ -31,18 +31,18 @@ function MetricCard({
 }) {
   const iconClasses =
     tone === "attention"
-      ? "bg-amber-50 text-amber-700"
-      : "bg-cyan-50 text-cyan-700";
+      ? "bg-warning-muted text-warning-foreground"
+      : "bg-info-muted text-info";
   return (
     <Card>
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="min-w-0">
-            <div className="truncate text-sm text-slate-500">{label}</div>
+            <div className="truncate text-sm text-muted-foreground">{label}</div>
             <div className="mt-2 text-2xl font-semibold tracking-normal">
               {value}
             </div>
-            {hint && <div className="mt-1 truncate text-xs text-slate-400">{hint}</div>}
+            {hint && <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div>}
           </div>
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${iconClasses}`}
@@ -108,7 +108,7 @@ export function SchedulesView() {
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-auto p-6 text-sm text-slate-500">
+      <div className="flex-1 overflow-auto p-6 text-sm text-muted-foreground">
         {t("schedules.loading")}
       </div>
     );
@@ -118,7 +118,7 @@ export function SchedulesView() {
     return (
       <div className="min-w-0 flex-1 space-y-4 overflow-auto p-6">
         {error && (
-          <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
@@ -131,7 +131,7 @@ export function SchedulesView() {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-auto p-7">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           {t("schedules.description")}
         </p>
         <Button variant="secondary" size="sm" onClick={() => void refresh()}>
@@ -141,7 +141,7 @@ export function SchedulesView() {
       </div>
 
       {error && (
-        <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -181,11 +181,11 @@ export function SchedulesView() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold">{t("schedules.accountSchedules")}</h2>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {t("schedules.accountSchedulesHint")}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Settings2 className="h-3.5 w-3.5" />
               {t("schedules.default", { value: defaultLabel })}
             </div>
@@ -193,14 +193,14 @@ export function SchedulesView() {
         </CardHeader>
         <CardContent className="p-0">
           {overview.rows.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {t("schedules.empty")}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
                     <th className="px-4 py-2 font-medium">{t("account")}</th>
                     <th className="px-4 py-2 font-medium">{t("schedules.interval")}</th>
                     <th className="px-4 py-2 font-medium">{t("schedules.lastChecked")}</th>
@@ -212,23 +212,23 @@ export function SchedulesView() {
                   {overview.rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="border-b border-slate-50 last:border-b-0"
+                      className="border-b border-border last:border-b-0"
                     >
                       <td className="px-4 py-3">
-                        <div className="truncate font-medium text-slate-800">
+                        <div className="truncate font-medium text-foreground">
                           {row.name}
                         </div>
-                        <div className="mt-0.5 text-xs text-slate-500">
+                        <div className="mt-0.5 text-xs text-muted-foreground">
                           {providerLabel(row.provider)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-foreground">
                         {intervalLabel(row, t, locale)}
                       </td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {formatTime(row.lastCheckedAt, locale)}
                       </td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {row.nextCheckAt == null
                           ? "—"
                           : row.dueNow

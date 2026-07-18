@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  Clock3,
   Database,
   Globe2,
   GripVertical,
@@ -44,6 +43,7 @@ import { Label } from "./ui/label";
 import { Select } from "./ui/select";
 import { Sheet } from "./ui/sheet";
 import { Skeleton } from "./ui/skeleton";
+import { Switch } from "./ui/switch";
 import { ConfirmDialog } from "./ui/dialog";
 import { Tooltip } from "./ui/tooltip";
 import { AccountForm } from "./AccountForm";
@@ -65,6 +65,51 @@ import type {
 type ViewMode = "list" | "table";
 type AccountSortMode = "sort_order" | "balance";
 type AccountStatusFilter = "all" | "enabled" | "disabled";
+
+interface StoredAccountFilters {
+  sortMode: AccountSortMode;
+  statusFilter: AccountStatusFilter;
+}
+
+const ACCOUNT_FILTERS_STORAGE_KEY = "zzz.accounts.filters";
+const DEFAULT_ACCOUNT_FILTERS: StoredAccountFilters = {
+  sortMode: "sort_order",
+  statusFilter: "all",
+};
+
+function loadAccountFilters(): StoredAccountFilters {
+  try {
+    const stored = window.localStorage.getItem(ACCOUNT_FILTERS_STORAGE_KEY);
+    if (!stored) return DEFAULT_ACCOUNT_FILTERS;
+
+    const parsed = JSON.parse(stored) as Partial<StoredAccountFilters>;
+    const sortMode =
+      parsed.sortMode === "sort_order" || parsed.sortMode === "balance"
+        ? parsed.sortMode
+        : DEFAULT_ACCOUNT_FILTERS.sortMode;
+    const statusFilter =
+      parsed.statusFilter === "all" ||
+      parsed.statusFilter === "enabled" ||
+      parsed.statusFilter === "disabled"
+        ? parsed.statusFilter
+        : DEFAULT_ACCOUNT_FILTERS.statusFilter;
+
+    return { sortMode, statusFilter };
+  } catch {
+    return DEFAULT_ACCOUNT_FILTERS;
+  }
+}
+
+function saveAccountFilters(filters: StoredAccountFilters) {
+  try {
+    window.localStorage.setItem(
+      ACCOUNT_FILTERS_STORAGE_KEY,
+      JSON.stringify(filters),
+    );
+  } catch {
+    // Keep filtering usable when browser storage is unavailable.
+  }
+}
 
 interface AccountsViewProps {
   accounts: AccountView[];
@@ -108,16 +153,36 @@ export function AccountsView({
   onSetEnabled,
 }: AccountsViewProps) {
   const { t } = useI18n();
+  const [initialFilters] = useState(loadAccountFilters);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [sortMode, setSortMode] = useState<AccountSortMode>("sort_order");
-  const [statusFilter, setStatusFilter] =
-    useState<AccountStatusFilter>("all");
+  const [sortMode, setSortModeState] = useState<AccountSortMode>(
+    initialFilters.sortMode,
+  );
+  const [statusFilter, setStatusFilterState] = useState<AccountStatusFilter>(
+    initialFilters.statusFilter,
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<AccountView | null>(
     null,
   );
   const [submitting, setSubmitting] = useState(false);
   const [openErrors, setOpenErrors] = useState<Record<string, string>>({});
+
+  const setSortMode = useCallback(
+    (nextSortMode: AccountSortMode) => {
+      saveAccountFilters({ sortMode: nextSortMode, statusFilter });
+      setSortModeState(nextSortMode);
+    },
+    [statusFilter],
+  );
+
+  const setStatusFilter = useCallback(
+    (nextStatusFilter: AccountStatusFilter) => {
+      saveAccountFilters({ sortMode, statusFilter: nextStatusFilter });
+      setStatusFilterState(nextStatusFilter);
+    },
+    [sortMode],
+  );
 
   const handleCreate = useCallback(
     async (input: CreateAccountInput) => {
@@ -490,7 +555,7 @@ function AccountActions({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:text-rose-600"
+          className="h-8 w-8 hover:text-destructive"
           onClick={() => onDeleteClick(account)}
           title={t("delete")}
         >
@@ -510,10 +575,10 @@ function ScheduleToggle({ account, onSetEnabled }: ScheduleToggleProps) {
   const { t } = useI18n();
   const [toggling, setToggling] = useState(false);
 
-  const handleToggle = async () => {
+  const handleToggle = async (enabled: boolean) => {
     setToggling(true);
     try {
-      await onSetEnabled(account, !account.enabled);
+      await onSetEnabled(account, enabled);
     } catch (err) {
       // Error is handled by parent component (sets rowErrors)
     } finally {
@@ -527,28 +592,13 @@ function ScheduleToggle({ account, onSetEnabled }: ScheduleToggleProps) {
 
   return (
     <Tooltip content={t("accounts.scheduleToggle")}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={account.enabled}
-        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-          account.enabled
-            ? "bg-emerald-500 hover:bg-emerald-600"
-            : "bg-slate-300 hover:bg-slate-400"
-        }`}
-        onClick={handleToggle}
+      <Switch
+        checked={account.enabled}
+        onCheckedChange={(enabled) => void handleToggle(enabled)}
         disabled={toggling}
         title={title}
         aria-label={title}
-      >
-        <span
-          className={`inline-flex h-4 w-4 items-center justify-center transform rounded-full bg-white shadow-sm transition-transform ${
-            account.enabled ? "translate-x-5" : "translate-x-0.5"
-          }`}
-        >
-          <Clock3 className="h-2.5 w-2.5 text-slate-600" />
-        </span>
-      </button>
+      />
     </Tooltip>
   );
 }
@@ -566,13 +616,13 @@ function getAccountBorderColor(account: AccountView): {
 
   if (isFailed) {
     return {
-      borderClass: "border-l-rose-400",
-      bgClass: "bg-rose-50/30",
+      borderClass: "border-l-destructive",
+      bgClass: "bg-destructive/5",
     };
   } else if (isLowBalance) {
     return {
-      borderClass: "border-l-amber-400",
-      bgClass: "bg-amber-50/30",
+      borderClass: "border-l-warning",
+      bgClass: "bg-warning-muted/30",
     };
   }
   return {
@@ -680,7 +730,7 @@ function AccountListView({
   return (
     <div className="space-y-2">
       {reorderError && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {reorderError}
         </div>
       )}
@@ -779,7 +829,7 @@ function SortableAccountItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md ${
+      className={`overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all hover:shadow-md ${
         isDragging ? "opacity-50 shadow-2xl z-10" : ""
       }`}
     >
@@ -791,7 +841,7 @@ function SortableAccountItem({
           {...attributes}
           {...listeners}
           onPointerDownCapture={handleDragHandlePointerDown}
-          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded hover:bg-slate-100 ${
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded hover:bg-accent ${
             canDragReorder
               ? "cursor-grab active:cursor-grabbing"
               : "cursor-not-allowed opacity-50"
@@ -802,7 +852,7 @@ function SortableAccountItem({
               : t("accounts.dragOnlyInAllStatusSortMode")
           }
         >
-          <GripVertical className="h-5 w-5 text-slate-400" />
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
         </div>
 
         {/* Left: Status Icon + Name + Badges + Context */}
@@ -818,7 +868,7 @@ function SortableAccountItem({
           <div className="min-w-0 flex-1">
             {/* Name + Badges */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="truncate font-semibold text-slate-900 text-base">
+              <span className="truncate font-semibold text-foreground text-base">
                 {account.name}
               </span>
               {!account.enabled && (
@@ -834,7 +884,7 @@ function SortableAccountItem({
             </div>
 
             {/* Context: Provider, Base URL, Threshold, Plan, Sort Order */}
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Badge variant="neutral" className="text-[10px] px-1.5 py-0">
                   {t(`provider.${account.provider}`)}
@@ -842,7 +892,7 @@ function SortableAccountItem({
               </span>
               <span className="min-w-0 truncate">{account.baseUrl}</span>
               {account.balanceThreshold != null && (
-                <span className="flex-shrink-0 text-slate-500">
+                <span className="flex-shrink-0 text-muted-foreground">
                   {t(
                     account.usdCreditsPerCny != null
                       ? "accounts.convertedThreshold"
@@ -854,14 +904,14 @@ function SortableAccountItem({
                 </span>
               )}
               {account.usdCreditsPerCny != null && (
-                <span className="flex-shrink-0 text-slate-500">
+                <span className="flex-shrink-0 text-muted-foreground">
                   {t("accounts.creditRatio", {
                     rate: account.usdCreditsPerCny,
                   })}
                 </span>
               )}
               {account.lastPlanName && (
-                <span className="min-w-0 truncate text-slate-500">
+                <span className="min-w-0 truncate text-muted-foreground">
                   {t("accounts.plan", { name: account.lastPlanName })}
                 </span>
               )}
@@ -869,7 +919,7 @@ function SortableAccountItem({
 
             {/* Note */}
             {account.note && (
-              <div className="mt-1 text-xs text-slate-500 line-clamp-2">
+              <div className="mt-1 text-xs text-muted-foreground line-clamp-2">
                 {account.note}
               </div>
             )}
@@ -882,7 +932,7 @@ function SortableAccountItem({
           {account.lastRemaining != null ? (
             <div className="flex flex-col items-end gap-0.5 text-right text-xs">
               {/* Line 1: Last Checked Time (small, muted) */}
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[11px] text-muted-foreground">
                 {account.lastCheckedAt
                   ? formatTime(account.lastCheckedAt)
                   : t("time.never")}
@@ -891,26 +941,26 @@ function SortableAccountItem({
               {/* Line 2: Used + Remaining (horizontal, compact) */}
               <div className="flex items-center gap-2 whitespace-nowrap text-xs">
                 {account.lastUsed != null && (
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     {t("accounts.usedStat")}:{" "}
-                    <span className="text-slate-700">
+                    <span className="text-foreground">
                       {formatMoney(account.lastUsed, account.lastUnit)}
                     </span>
                   </span>
                 )}
-                <span className="text-slate-600">
+                <span className="text-muted-foreground">
                   {t("accounts.remainingStat")}:{" "}
                   <span
                     className={`font-semibold ${
                       account.lastResult === "failed" ||
                       account.lastResult === "invalid_credential"
-                        ? "text-rose-600"
+                        ? "text-destructive"
                         : account.lastResult === "low_balance" ||
                           isBelowBalanceThreshold(account)
-                        ? "text-amber-600"
+                        ? "text-warning-foreground"
                         : account.lastRemaining > 0
-                        ? "text-emerald-600"
-                        : "text-slate-500"
+                        ? "text-success"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {formatMoney(account.lastRemaining, account.lastUnit)}
@@ -919,7 +969,7 @@ function SortableAccountItem({
               </div>
 
               {convertedBalance != null && (
-                <div className="text-[11px] font-medium text-slate-500">
+                <div className="text-[11px] font-medium text-muted-foreground">
                   {t("accounts.actualValue", {
                     amount: convertedBalance,
                   })}
@@ -928,16 +978,16 @@ function SortableAccountItem({
 
               {/* Line 3: Total (optional, small) */}
               {account.lastTotal != null && (
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-muted-foreground">
                   {t("accounts.totalStat")}:{" "}
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     {formatMoney(account.lastTotal, account.lastUnit)}
                   </span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-muted-foreground">
               {t("accounts.noBalanceData")}
             </div>
           )}
@@ -957,7 +1007,7 @@ function SortableAccountItem({
 
       {/* Error Row */}
       {displayError && (
-        <div className="border-t border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700">
+        <div className="border-t border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">
           {displayError}
         </div>
       )}
@@ -979,9 +1029,9 @@ function AccountTableView({
   const { t, resultLabel } = useI18n();
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       {/* Table Header */}
-      <div className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_auto] gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_auto] gap-4 border-b border-border bg-muted/50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         <div>{t("account")}</div>
         <div>{t("provider")}</div>
         <div>{t("status")}</div>
@@ -991,7 +1041,7 @@ function AccountTableView({
       </div>
 
       {/* Table Body */}
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-border">
         {accounts.map((account) => {
           const { borderClass, bgClass } = getAccountBorderColor(account);
           const displayError = rowErrors[account.id] || openErrors[account.id];
@@ -999,12 +1049,12 @@ function AccountTableView({
           return (
             <div
               key={account.id}
-              className={`grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_auto] gap-4 border-l-2 ${borderClass} px-4 py-3 transition-colors hover:bg-slate-50 ${bgClass}`}
+              className={`grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr_auto] gap-4 border-l-2 ${borderClass} px-4 py-3 transition-colors hover:bg-muted ${bgClass}`}
             >
               {/* Account Name & Base URL */}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-medium text-slate-900">
+                  <span className="truncate font-medium text-foreground">
                     {account.name}
                   </span>
                   {!account.enabled && (
@@ -1018,12 +1068,12 @@ function AccountTableView({
                     </Badge>
                   )}
                 </div>
-                <div className="mt-0.5 truncate text-xs text-slate-500">
+                <div className="mt-0.5 truncate text-xs text-muted-foreground">
                   {account.baseUrl}
                 </div>
                 {/* Note */}
                 {account.note && (
-                  <div className="mt-0.5 text-[11px] text-slate-400 truncate">
+                  <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
                     {account.note}
                   </div>
                 )}
@@ -1041,12 +1091,12 @@ function AccountTableView({
                 {account.lastResult ? (
                   <div className="flex items-center gap-1.5">
                     {resultIcon(account.lastResult)}
-                    <span className="text-slate-700">
+                    <span className="text-foreground">
                       {resultLabel(account.lastResult)}
                     </span>
                   </div>
                 ) : (
-                  <span className="text-slate-400">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
 
@@ -1056,11 +1106,11 @@ function AccountTableView({
               </div>
 
               {/* Last Checked */}
-              <div className="flex items-center text-xs text-slate-600">
+              <div className="flex items-center text-xs text-muted-foreground">
                 {account.lastCheckedAt ? (
                   formatTime(account.lastCheckedAt)
                 ) : (
-                  <span className="text-slate-400">{t("time.never")}</span>
+                  <span className="text-muted-foreground">{t("time.never")}</span>
                 )}
               </div>
 
@@ -1079,7 +1129,7 @@ function AccountTableView({
 
               {/* Error Row */}
               {displayError && (
-                <div className="col-span-6 -mt-1 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                <div className="col-span-6 -mt-1 rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   {displayError}
                 </div>
               )}
@@ -1112,17 +1162,17 @@ function RemainingStat({
     account.lastResult === "failed" ||
     account.lastResult === "invalid_credential"
   ) {
-    textColor = "text-rose-600";
-    borderColor = "border-rose-300";
+    textColor = "text-destructive";
+    borderColor = "border-destructive/50";
   } else if (account.lastResult === "low_balance" || belowThreshold) {
-    textColor = "text-amber-600";
-    borderColor = "border-amber-300";
+    textColor = "text-warning-foreground";
+    borderColor = "border-warning/50";
   } else if (account.lastRemaining != null && account.lastRemaining > 0) {
-    textColor = "text-emerald-600";
-    borderColor = "border-emerald-300";
+    textColor = "text-success";
+    borderColor = "border-success/50";
   } else {
-    textColor = "text-slate-500";
-    borderColor = "border-slate-300";
+    textColor = "text-muted-foreground";
+    borderColor = "border-input";
   }
 
   if (prominent) {
@@ -1135,11 +1185,11 @@ function RemainingStat({
               {formatMoney(account.lastRemaining, account.lastUnit)}
             </div>
             {convertedBalance && (
-              <div className="text-xs font-semibold text-slate-500">
+              <div className="text-xs font-semibold text-muted-foreground">
                 {convertedBalance}
               </div>
             )}
-            <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {t("accounts.remainingStat")}
             </div>
           </div>
@@ -1149,14 +1199,14 @@ function RemainingStat({
   }
 
   return (
-    <div className={`inline-flex items-center gap-1.5 rounded border ${borderColor} bg-white px-2 py-1 ${textColor}`}>
+    <div className={`inline-flex items-center gap-1.5 rounded border ${borderColor} bg-card px-2 py-1 ${textColor}`}>
       <Wallet className="h-3.5 w-3.5 flex-shrink-0" />
       <span className="min-w-0 text-sm font-semibold">
         <span className="block">
           {formatMoney(account.lastRemaining, account.lastUnit)}
         </span>
         {convertedBalance && (
-          <span className="block text-[10px] font-medium text-slate-500">
+          <span className="block text-[10px] font-medium text-muted-foreground">
             {convertedBalance}
           </span>
         )}

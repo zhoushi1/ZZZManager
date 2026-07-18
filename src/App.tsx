@@ -424,7 +424,7 @@ function App() {
       <div className="grid h-full grid-cols-[248px_1fr]">
         <aside className="flex h-full flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
           <div className="flex h-[76px] shrink-0 items-center gap-3 border-b border-sidebar-border px-5">
-            <div className="flex size-10 items-center justify-center overflow-hidden rounded-md border border-sidebar-border bg-white/5">
+            <div className="flex size-10 items-center justify-center overflow-hidden rounded-md border border-sidebar-border bg-sidebar-foreground/5">
               <img src={appLogo} alt={APP_NAME} className="size-full object-contain" />
             </div>
             <div className="min-w-0">
@@ -594,21 +594,21 @@ function App() {
             }
           }}
         >
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl">
             {batchRefresh.phase === 'confirm' && (
               <>
                 <h2 className="text-xl font-semibold mb-2">
                   {t('accounts.refreshAllTitle')}
                 </h2>
-                <p className="text-sm text-slate-600 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {t('accounts.refreshAllDescription')}
                 </p>
                 {batchRefresh.items.length === 0 ? (
-                  <p className="text-sm text-slate-700 mb-6">
+                  <p className="text-sm text-foreground mb-6">
                     {t('accounts.refreshAllEmpty')}
                   </p>
                 ) : (
-                  <p className="text-sm text-slate-700 mb-6">
+                  <p className="text-sm text-foreground mb-6">
                     {t('accounts.refreshAllCount', { count: batchRefresh.items.length })}
                   </p>
                 )}
@@ -637,7 +637,7 @@ function App() {
 
                 {/* Progress bar */}
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-slate-600 mb-2">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-2">
                     <span>
                       {batchRefresh.items.filter(it => it.status !== 'pending' && it.status !== 'running').length} / {batchRefresh.items.length}
                     </span>
@@ -651,9 +651,9 @@ function App() {
                         : 0}%
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-200">
+                  <div className="h-2 w-full rounded-full bg-muted">
                     <div
-                      className="h-2 rounded-full bg-slate-950 transition-all duration-300"
+                      className="h-2 rounded-full bg-primary transition-all duration-300"
                       style={{
                         width: `${
                           batchRefresh.items.length > 0
@@ -669,52 +669,52 @@ function App() {
 
                 {/* Current item */}
                 {batchRefresh.phase === 'progress' && batchRefresh.currentIndex >= 0 && (
-                  <div className="mb-4 text-sm text-slate-600">
+                  <div className="mb-4 text-sm text-muted-foreground">
                     {t('accounts.refreshAllCurrent')}: {batchRefresh.items[batchRefresh.currentIndex]?.name}
                   </div>
                 )}
 
                 {/* Items list */}
-                <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-md mb-4">
+                <div className="max-h-96 overflow-y-auto border border-border rounded-md mb-4">
                   {batchRefresh.items.map((item, idx) => (
                     <div
                       key={item.id}
-                      className={`flex items-center justify-between px-4 py-3 border-b border-slate-200 last:border-b-0 ${
-                        idx === batchRefresh.currentIndex ? 'bg-slate-50' : ''
+                      className={`flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0 ${
+                        idx === batchRefresh.currentIndex ? 'bg-muted/50' : ''
                       }`}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm truncate">{item.name}</div>
                         {item.status === 'failed' && item.message && (
-                          <div className="text-xs text-red-600 mt-1 truncate">
+                          <div className="text-xs text-destructive mt-1 truncate">
                             {item.message}
                           </div>
                         )}
                       </div>
                       <div className="ml-4 shrink-0">
                         {item.status === 'pending' && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             {t('accounts.refreshStatusPending')}
                           </span>
                         )}
                         {item.status === 'running' && (
-                          <span className="text-xs text-blue-600 flex items-center gap-1">
+                          <span className="text-xs text-info flex items-center gap-1">
                             <RefreshCw className="h-3 w-3 animate-spin" />
                             {t('accounts.refreshStatusRunning')}
                           </span>
                         )}
                         {item.status === 'success' && (
-                          <span className="text-xs text-green-600 font-medium">
+                          <span className="text-xs text-success font-medium">
                             {t('accounts.refreshStatusSuccess')}
                           </span>
                         )}
                         {item.status === 'failed' && (
-                          <span className="text-xs text-red-600 font-medium">
+                          <span className="text-xs text-destructive font-medium">
                             {t('accounts.refreshStatusFailed')}
                           </span>
                         )}
                         {item.status === 'skipped' && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             {t('accounts.refreshStatusSkipped')}
                           </span>
                         )}

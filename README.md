@@ -19,7 +19,7 @@ A local-first desktop application for monitoring balances across AI gateway acco
 - **Notifications**: Generic webhook, Feishu, WeCom, and DingTalk delivery with test sends, delivery history, and configurable cooldowns.
 - **Desktop integration**: System tray, launch on login, single-instance behavior, and in-app update checking.
 - **Configuration portability**: Import and export settings, accounts, hooks, and optional credentials.
-- **Chinese and English UI**.
+- **Appearance and language**: Light, dark, and system-following themes, plus Chinese and English UI.
 
 ## Supported Providers
 
@@ -56,6 +56,7 @@ Only automatic checks dispatch notifications. Manual checks update the account s
 - Request User-Agent.
 - System proxy, no proxy, or custom HTTP/HTTPS/SOCKS5 proxy.
 - Launch on login.
+- Light, dark, or system-following appearance. System mode is the default.
 - Chinese or English interface.
 - Configuration import and export.
 - Application version, author, changelog, and update checking.

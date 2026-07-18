@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { AlertTriangle, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input, Label } from "./ui/input";
+import { Field as FormField, FieldTitle } from "./ui/field";
+import { Select } from "./ui/select";
+import { Switch } from "./ui/switch";
 import { useI18n } from "../lib/i18n";
 import type {
   AccountView,
@@ -220,7 +223,7 @@ export function AccountForm({
   return (
     <form id="account-form" onSubmit={handleSubmit} className="space-y-8">
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-foreground">
           {t("form.sectionBasics")}
         </h3>
         <div>
@@ -237,19 +240,18 @@ export function AccountForm({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="account-provider">{t("provider")}</Label>
-            <select
+            <Select
               id="account-provider"
               value={provider}
               disabled={isEdit}
               onChange={(e) => setProvider(e.target.value as Provider)}
-              className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
             >
               {(["new_api", "sub2api", "custom_http"] as Provider[]).map((p) => (
                 <option key={p} value={p}>
                   {providerLabel(p)}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <Label htmlFor="account-baseurl">{t("baseUrl")}</Label>
@@ -271,17 +273,17 @@ export function AccountForm({
             onChange={(e) => setNote(e.target.value)}
             placeholder={t("form.notePlaceholder")}
             rows={3}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-foreground">
           {t("form.sectionCredentials")}
         </h3>
         {credentialsLoading && (
-          <p className="text-xs text-slate-500">{t("form.loadingCredentials")}</p>
+          <p className="text-xs text-muted-foreground">{t("form.loadingCredentials")}</p>
         )}
         <CredentialFields
           provider={provider}
@@ -303,7 +305,7 @@ export function AccountForm({
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-foreground">
           {t("form.sectionCheck")}
         </h3>
         <div className="grid grid-cols-2 gap-3">
@@ -351,7 +353,7 @@ export function AccountForm({
         </div>
 
         {usesConvertedThreshold && (
-          <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          <div className="flex gap-2 rounded-md border border-warning/30 bg-warning-muted px-3 py-2 text-xs leading-5 text-warning-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <span>
               {t("form.convertedThresholdHint", {
@@ -370,22 +372,22 @@ export function AccountForm({
             onChange={(e) => setSortOrder(e.target.value)}
             placeholder="0"
           />
-          <p className="mt-1 text-xs text-slate-500">{t("form.sortOrderHint")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("form.sortOrderHint")}</p>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
+        <FormField orientation="horizontal">
+          <FieldTitle>{t("form.enabledHint")}</FieldTitle>
+          <Switch
+            id="account-enabled"
             checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
+            onCheckedChange={setEnabled}
+            aria-label={t("form.enabledHint")}
           />
-          {t("form.enabledHint")}
-        </label>
+        </FormField>
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-foreground">
           {t("form.sectionAdvanced")}
         </h3>
         <div>
@@ -401,7 +403,7 @@ export function AccountForm({
       </section>
 
       {error && (
-        <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -455,9 +457,9 @@ function CredentialFields({
 
   if (provider === "new_api") {
     return (
-      <div className="space-y-3 rounded-md border border-slate-100 bg-slate-50 p-3">
+      <div className="space-y-3 rounded-md border border-border bg-muted/50 p-3">
         {isPlaceholder && (
-          <p className="text-xs text-amber-800">
+          <p className="text-xs text-warning-foreground">
             {t("form.placeholderCreds")}
           </p>
         )}
@@ -476,7 +478,7 @@ function CredentialFields({
             <button
               type="button"
               onClick={() => setShowAccessToken(!showAccessToken)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={showAccessToken ? t("form.hideSecret") : t("form.showSecret")}
               title={showAccessToken ? t("form.hideSecret") : t("form.showSecret")}
             >
@@ -504,9 +506,9 @@ function CredentialFields({
 
   if (provider === "custom_http") {
     return (
-      <div className="space-y-3 rounded-md border border-slate-100 bg-slate-50 p-3">
+      <div className="space-y-3 rounded-md border border-border bg-muted/50 p-3">
         {isPlaceholder && (
-          <p className="text-xs text-amber-800">
+          <p className="text-xs text-warning-foreground">
             {t("form.placeholderCreds")}
           </p>
         )}
@@ -525,7 +527,7 @@ function CredentialFields({
             <button
               type="button"
               onClick={() => setShowApiKey(!showApiKey)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={showApiKey ? t("form.hideSecret") : t("form.showSecret")}
               title={showApiKey ? t("form.hideSecret") : t("form.showSecret")}
             >
@@ -546,9 +548,9 @@ function CredentialFields({
   }
 
   return (
-    <div className="space-y-3 rounded-md border border-slate-100 bg-slate-50 p-3">
+    <div className="space-y-3 rounded-md border border-border bg-muted/50 p-3">
       {isPlaceholder && (
-        <p className="text-xs text-amber-800">
+        <p className="text-xs text-warning-foreground">
           {t("form.placeholderCreds")}
         </p>
       )}
@@ -567,7 +569,7 @@ function CredentialFields({
           <button
             type="button"
             onClick={() => setShowApiKey(!showApiKey)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             aria-label={showApiKey ? t("form.hideSecret") : t("form.showSecret")}
             title={showApiKey ? t("form.hideSecret") : t("form.showSecret")}
           >
@@ -614,9 +616,9 @@ function CustomAdapterEditor({
     });
 
   return (
-    <div className="space-y-3 border-t border-slate-200 pt-3">
+    <div className="space-y-3 border-t border-border pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs font-medium text-slate-600">{t("adapter.config")}</div>
+        <div className="text-xs font-medium text-muted-foreground">{t("adapter.config")}</div>
         <div className="flex gap-2">
           <Button
             type="button"
@@ -640,15 +642,14 @@ function CustomAdapterEditor({
       <div className="grid grid-cols-[110px_1fr] gap-3">
         <div>
           <Label htmlFor="custom-method">{t("adapter.method")}</Label>
-          <select
+          <Select
             id="custom-method"
             value={value.method}
             onChange={(e) => set({ method: e.target.value as CustomHttpMethod })}
-            className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
           >
             <option value="GET">GET</option>
             <option value="POST">POST</option>
-          </select>
+          </Select>
         </div>
         <div>
           <Label htmlFor="custom-path">{t("adapter.path")}</Label>
@@ -689,7 +690,7 @@ function CustomAdapterEditor({
               onClick={() => removeHeader(index)}
               title={t("adapter.removeHeader")}
             >
-              <Trash2 className="h-4 w-4 text-rose-600" />
+              <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
         ))}
@@ -702,7 +703,7 @@ function CustomAdapterEditor({
             id="custom-body"
             value={value.body ?? ""}
             onChange={(e) => set({ body: e.target.value })}
-            className="min-h-20 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+            className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder='{"key":"{{apiKey}}"}'
           />
         </div>

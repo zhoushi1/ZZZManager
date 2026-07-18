@@ -6,6 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -215,6 +216,7 @@ textarea {
 }
 
 .dark {
+  color-scheme: dark;
   --background:
     oklch(0.145 0 0);
   --foreground:
@@ -245,6 +247,24 @@ textarea {
     oklch(0.985 0 0);
   --destructive:
     oklch(0.704 0.191 22.216);
+  --success:
+    oklch(0.72 0.135 160);
+  --success-foreground:
+    oklch(0.16 0.03 160);
+  --success-muted:
+    oklch(0.25 0.04 160);
+  --warning:
+    oklch(0.78 0.14 80);
+  --warning-foreground:
+    oklch(0.86 0.1 82);
+  --warning-muted:
+    oklch(0.25 0.04 75);
+  --info:
+    oklch(0.72 0.11 225);
+  --info-foreground:
+    oklch(0.16 0.03 225);
+  --info-muted:
+    oklch(0.25 0.035 225);
   --border:
     oklch(1 0 0 / 10%);
   --input:
@@ -266,9 +286,9 @@ textarea {
   --sidebar-foreground:
     oklch(0.985 0 0);
   --sidebar-primary:
-    oklch(0.488 0.243 264.376);
+    oklch(0.76 0.14 165);
   --sidebar-primary-foreground:
-    oklch(0.985 0 0);
+    oklch(0.16 0.02 255);
   --sidebar-accent:
     oklch(0.269 0 0);
   --sidebar-accent-foreground:
@@ -276,7 +296,7 @@ textarea {
   --sidebar-border:
     oklch(1 0 0 / 10%);
   --sidebar-ring:
-    oklch(0.556 0 0);
+    oklch(0.76 0.14 165);
 }
 
 @layer base {

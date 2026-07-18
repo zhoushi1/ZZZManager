@@ -44,14 +44,14 @@ export function resultBadge(
 export function resultIcon(result: BalanceResult | null) {
   switch (result) {
     case "healthy":
-      return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+      return <CheckCircle2 className="h-4 w-4 text-success" />;
     case "low_balance":
-      return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      return <AlertTriangle className="h-4 w-4 text-warning-foreground" />;
     case "invalid_credential":
     case "failed":
-      return <XCircle className="h-4 w-4 text-rose-600" />;
+      return <XCircle className="h-4 w-4 text-destructive" />;
     default:
-      return <HelpCircle className="h-4 w-4 text-slate-400" />;
+      return <HelpCircle className="h-4 w-4 text-muted-foreground" />;
   }
 }
 

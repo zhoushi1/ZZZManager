@@ -144,7 +144,7 @@ export function HistoryView() {
       </Card>
 
       {error && (
-        <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -154,7 +154,7 @@ export function HistoryView() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold">{t("history.title")}</h2>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {loading
                   ? t("history.loading")
                   : t("history.rows", {
@@ -171,14 +171,14 @@ export function HistoryView() {
         </CardHeader>
         <CardContent className="p-0">
           {!loading && rows.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {t("history.empty")}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs font-medium text-slate-500">
+                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                     <th className="w-[168px] px-4 py-2.5">{t("time")}</th>
                     <th className="w-[160px] px-4 py-2.5">{t("account")}</th>
                     <th className="w-[96px] px-4 py-2.5">{t("provider")}</th>
@@ -191,22 +191,22 @@ export function HistoryView() {
                   {rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="border-b border-slate-100 last:border-b-0 align-top"
+                      className="border-b border-border last:border-b-0 align-top"
                     >
-                      <td className="px-4 py-3 text-xs text-slate-500">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatTime(row.checkedAt, locale)}
                       </td>
-                      <td className="truncate px-4 py-3 font-medium text-slate-800">
+                      <td className="truncate px-4 py-3 font-medium text-foreground">
                         {accountName(row)}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {providerLabel(row.provider)}
                       </td>
                       <td className="px-4 py-3">{resultBadge(row.result, resultLabel)}</td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-foreground">
                         <div>{formatMoney(row.remaining, row.unit)}</div>
                         <ConvertedHistoryValue row={row} />
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-muted-foreground">
                           {row.used != null || row.total != null
                             ? t("history.usedTotal", {
                                 used: formatMoney(row.used, row.unit),
@@ -215,12 +215,12 @@ export function HistoryView() {
                             : ""}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-muted-foreground">
                         <div className="truncate" title={row.message ?? undefined}>
                           {row.message ?? "—"}
                         </div>
                         {row.planName && (
-                          <div className="truncate text-xs text-slate-400">
+                          <div className="truncate text-xs text-muted-foreground">
                             {t("history.plan", { name: row.planName })}
                           </div>
                         )}
@@ -246,7 +246,7 @@ function ConvertedHistoryValue({ row }: { row: HistoryEntry }) {
   );
 
   return converted ? (
-    <div className="text-xs font-medium text-slate-500">
+    <div className="text-xs font-medium text-muted-foreground">
       {t("accounts.actualValue", { amount: converted })}
     </div>
   ) : null;
