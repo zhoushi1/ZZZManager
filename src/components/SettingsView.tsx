@@ -40,9 +40,13 @@ interface SettingsViewProps {
    * (e.g. the accounts list). May be async; failures are surfaced to the user.
    */
   onImportComplete?: () => Promise<void> | void;
+  onUpdateAvailable?: (update: UpdateCheckResult) => void;
 }
 
-export function SettingsView({ onImportComplete }: SettingsViewProps = {}) {
+export function SettingsView({
+  onImportComplete,
+  onUpdateAvailable,
+}: SettingsViewProps = {}) {
   return (
     <div className="min-w-0 flex-1 overflow-auto p-5 sm:p-7">
       <div className="mx-auto grid w-full max-w-[1500px] grid-cols-1 items-start gap-5 xl:grid-cols-2">
@@ -54,7 +58,7 @@ export function SettingsView({ onImportComplete }: SettingsViewProps = {}) {
           <CheckDefaultsCard />
           <ImportExportCard onImportComplete={onImportComplete} />
         </div>
-        <AboutCard />
+        <AboutCard onUpdateAvailable={onUpdateAvailable} />
       </div>
     </div>
   );
@@ -660,7 +664,11 @@ function ImportExportCard({
   );
 }
 
-function AboutCard() {
+function AboutCard({
+  onUpdateAvailable,
+}: {
+  onUpdateAvailable?: (update: UpdateCheckResult) => void;
+}) {
   const { t } = useI18n();
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -696,7 +704,9 @@ function AboutCard() {
     setCheckError(null);
     setResult(null);
     try {
-      setResult(await api.checkForUpdate());
+      const nextResult = await api.checkForUpdate();
+      setResult(nextResult);
+      if (nextResult.updateAvailable) onUpdateAvailable?.(nextResult);
     } catch (err) {
       setCheckError(t("about.checkFailed", { error: String(err) }));
     } finally {

@@ -19,6 +19,7 @@ import { HistoryView } from "./components/HistoryView";
 import { OverviewView } from "./components/OverviewView";
 import { SchedulesView } from "./components/SchedulesView";
 import { SettingsView } from "./components/SettingsView";
+import { UpdateAvailableDialog } from "./components/UpdateAvailableDialog";
 import { WebhooksView } from "./components/WebhooksView";
 import * as api from "./lib/api";
 import { APP_NAME } from "./lib/app-metadata";
@@ -27,6 +28,7 @@ import { cn } from "./lib/utils";
 import type {
   AccountView,
   CreateAccountInput,
+  UpdateCheckResult,
   UpdateAccountInput,
 } from "./types";
 
@@ -50,6 +52,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [overviewRefreshAction, setOverviewRefreshAction] =
     useState<HeaderRefreshAction | null>(null);
+  const [availableUpdate, setAvailableUpdate] =
+    useState<UpdateCheckResult | null>(null);
 
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
@@ -89,6 +93,21 @@ function App() {
 
   useEffect(() => {
     document.title = APP_NAME;
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .checkForUpdate()
+      .then((result) => {
+        if (active && result.updateAvailable) setAvailableUpdate(result);
+      })
+      .catch(() => {
+        // Startup checks are silent; manual checks in Settings surface errors.
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const refresh = useCallback(async () => {
@@ -576,13 +595,21 @@ function App() {
             ) : view === "schedules" ? (
               <SchedulesView />
             ) : view === "settings" ? (
-              <SettingsView onImportComplete={handleImportComplete} />
+              <SettingsView
+                onImportComplete={handleImportComplete}
+                onUpdateAvailable={setAvailableUpdate}
+              />
             ) : (
               <WebhooksView />
             )}
           </div>
         </section>
       </div>
+
+      <UpdateAvailableDialog
+        update={availableUpdate}
+        onDismiss={() => setAvailableUpdate(null)}
+      />
 
       {/* Batch Refresh Dialog */}
       {batchRefresh.open && (
